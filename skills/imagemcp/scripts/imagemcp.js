@@ -17,7 +17,7 @@ const GLOBAL_CONFIG_FILE = path.join(GLOBAL_CONFIG_DIR, 'config.json');
 const LOCAL_CONFIG_DIR = '.imagemcp';
 const LOCAL_CONFIG_FILE = path.join(LOCAL_CONFIG_DIR, 'config.json');
 
-const DEFAULT_API_URL = process.env.IMAGEMCP_API_URL || 'http://localhost:8439';
+const DEFAULT_API_URL = process.env.IMAGEMCP_API_URL || 'https://api.imagemcpserver.com';
 
 // Terminal formatting colors
 const isColorSupported = Boolean(process.stderr.isTTY);
@@ -297,7 +297,7 @@ async function generateImage(rawArgs) {
     imageBase64,
   };
 
-  const resData = await apiRequest('/playground/generate', 'POST', payload);
+  const resData = await apiRequest('/playground/generate', 'POST', payload, true);
 
   // If output path flag is provided, download and save the generated image
   if (flags.out && resData.success && resData.result?.imageUrl) {

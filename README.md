@@ -30,7 +30,7 @@ agent-skill-imagemcp/
 
 ```bash
 export IMAGEMCP_API_KEY="sk-img-gen-your_secret_api_key_here"
-export IMAGEMCP_API_URL="http://localhost:5023"  # Or your deployed server URL
+export IMAGEMCP_API_URL="https://api.imagemcpserver.com"  # Production API URL
 ```
 
 Or run interactive setup:

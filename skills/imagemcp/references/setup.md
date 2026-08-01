@@ -14,13 +14,13 @@ The ImageMCP CLI (`./scripts/imagemcp.js`) requires an API key to communicate wi
 |----------|-------------|---------|
 | `IMAGEMCP_API_KEY` | **Required.** Your ImageMCP secret API key (`sk-img-gen-...`). | None |
 | `IMAGEMCP_KEY` | Alternative key variable name. | None |
-| `IMAGEMCP_API_URL` | Base URL of your ImageMCP backend server. | `http://localhost:8439` |
+| `IMAGEMCP_API_URL` | Base URL of your ImageMCP backend server. | `https://api.imagemcpserver.com` |
 
 ### Setting Environment Variables in Shell
 
 ```bash
 export IMAGEMCP_API_KEY="sk-img-gen-your_secret_api_key_here"
-export IMAGEMCP_API_URL="http://localhost:8439"
+export IMAGEMCP_API_URL="https://api.imagemcpserver.com"
 ```
 
 ---
@@ -45,7 +45,7 @@ This saves your API key and URL to `~/.config/imagemcp/config.json`.
 ./scripts/imagemcp.js config:set-key "sk-img-gen-your_secret_api_key_here"
 
 # Set API Backend URL
-./scripts/imagemcp.js config:set-url "http://localhost:8439"
+./scripts/imagemcp.js config:set-url "https://api.imagemcpserver.com"
 ```
 
 ---
@@ -54,3 +54,4 @@ This saves your API key and URL to `~/.config/imagemcp/config.json`.
 
 ### Claude Desktop / Cursor / Antigravity / Windsurf
 Ensure the environment variable `IMAGEMCP_API_KEY` is present in your IDE's environment settings or terminal shell environment when executing the skill.
+

@@ -8,7 +8,7 @@ allowed-tools: Bash(./scripts/imagemcp.js:*)
 
 # ImageMCP Server Skill
 
-Generate images, manage AI image models, configure model priorities, manage API keys, and monitor request telemetry using [ImageMCP Server](http://localhost:8439). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
+Generate images, manage AI image models, configure model priorities, manage API keys, and monitor request telemetry using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
 
 > **Script paths** below are relative to this skill's directory. Resolve them based on where the skill is installed.
 >
@@ -174,5 +174,5 @@ Retrieve showcase gallery items.
 ## Error Handling & Best Practices
 
 1. **API Key Setup**: Ensure `IMAGEMCP_API_KEY` is exported or configured via `./scripts/imagemcp.js setup`.
-2. **API Backend**: Defaults to `http://localhost:5023`.
+2. **API Backend**: Defaults to `https://api.imagemcpserver.com`.
 3. **JSON Output**: All commands output valid JSON to stdout for easy processing in scripts or AI tools.
