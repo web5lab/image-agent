@@ -17,7 +17,7 @@ const GLOBAL_CONFIG_FILE = path.join(GLOBAL_CONFIG_DIR, 'config.json');
 const LOCAL_CONFIG_DIR = '.imagemcp';
 const LOCAL_CONFIG_FILE = path.join(LOCAL_CONFIG_DIR, 'config.json');
 
-const DEFAULT_API_URL = process.env.IMAGEMCP_API_URL || 'https://api.imagemcpserver.com';
+const DEFAULT_API_URL = 'https://api.imagemcpserver.com';
 
 // Terminal formatting colors
 const isColorSupported = Boolean(process.stderr.isTTY);
@@ -44,8 +44,8 @@ function error(message, details = {}) {
 // Read configuration from env or config files
 function loadConfig() {
   let config = {
-    apiKey: process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY || '',
-    apiUrl: process.env.IMAGEMCP_API_URL || DEFAULT_API_URL,
+    apiKey: '',
+    apiUrl: DEFAULT_API_URL,
   };
 
   if (fs.existsSync(LOCAL_CONFIG_FILE)) {
@@ -62,9 +62,17 @@ function loadConfig() {
     } catch (_) {}
   }
 
+  if (process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY) {
+    config.apiKey = process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY;
+  }
+  if (process.env.IMAGEMCP_API_URL) {
+    config.apiUrl = process.env.IMAGEMCP_API_URL;
+  }
+
   config.apiUrl = config.apiUrl.replace(/\/+$/, '');
   return config;
 }
+
 
 function saveConfig(newConfig, isLocal = false) {
   const configFile = isLocal ? LOCAL_CONFIG_FILE : GLOBAL_CONFIG_FILE;
@@ -326,6 +334,78 @@ async function generateImage(rawArgs) {
   output(resData);
 }
 
+async function editImage(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+
+  if (!flags.image) {
+    error('Input image is required for image editing. Use --image <filepath_or_url>');
+  }
+
+  let prompt = flags.prompt || '';
+  if (flags.file) {
+    if (!fs.existsSync(flags.file)) {
+      error(`Prompt file not found: ${flags.file}`);
+    }
+    prompt = fs.readFileSync(flags.file, 'utf8').trim();
+  }
+
+  if (!prompt) {
+    error('Prompt is required for editing instructions. Use --prompt "<text>" or --file <path>');
+  }
+
+  const model = flags.model || flags['model-id'] || 'google/gemini-2.5-flash-image';
+  const style = flags.style || 'photorealistic';
+  const aspectRatio = flags['aspect-ratio'] || flags.aspect || flags.ratio || '1:1';
+  let imageBase64 = null;
+
+  const imgPath = flags.image;
+  if (fs.existsSync(imgPath)) {
+    const buffer = fs.readFileSync(imgPath);
+    const ext = path.extname(imgPath).replace('.', '').toLowerCase() || 'png';
+    imageBase64 = `data:image/${ext};base64,${buffer.toString('base64')}`;
+  } else if (imgPath.startsWith('http') || imgPath.startsWith('data:')) {
+    imageBase64 = imgPath;
+  } else {
+    error(`Image file not found: ${imgPath}`);
+  }
+
+  const payload = {
+    prompt,
+    model,
+    style,
+    aspectRatio,
+    imageBase64,
+  };
+
+  const resData = await apiRequest('/playground/edit', 'POST', payload, true);
+
+  if (flags.out && resData.success && resData.result?.imageUrl) {
+    const outPath = flags.out;
+    try {
+      const imgUrl = resData.result.imageUrl;
+      let buffer = null;
+
+      if (imgUrl.startsWith('data:')) {
+        const base64Data = imgUrl.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const fetchRes = await fetch(imgUrl);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(arrayBuf);
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to download image to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
+}
+
+
 async function listLogs() {
   const data = await apiRequest('/logs', 'GET', null, true);
   output(data.logs || data);
@@ -402,6 +482,17 @@ ${colors.bold}AVAILABLE COMMANDS:${colors.reset}
       --image <path_or_url>  Input image for image-to-image synthesis
       --out <filepath>       Save generated image to local file path
 
+  ${colors.green}edit${colors.reset} (alias: ${colors.green}image:edit${colors.reset})
+    Edit, refine, or transform an existing image.
+    Flags:
+      --image <path_or_url>  (Required) Target image to edit or modify
+      --prompt "<text>"      Edit instructions or description of changes
+      --file <path>          Read prompt from local file
+      --model <model_id>     Target model ID (default: google/gemini-2.5-flash-image)
+      --aspect-ratio <ratio> Aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 21:9)
+      --style <name>         Visual style preset (photorealistic, anime, vector, 3d)
+      --out <filepath>       Save edited image output to local file path
+
   ${colors.green}logs:list${colors.reset}
     List request telemetry logs & latency history.
 
@@ -472,6 +563,11 @@ async function main() {
       case 'generate':
       case 'image:generate':
         await generateImage(commandArgs);
+        break;
+
+      case 'edit':
+      case 'image:edit':
+        await editImage(commandArgs);
         break;
 
       case 'logs:list':

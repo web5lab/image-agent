@@ -1,6 +1,6 @@
 # ImageMCP Server AI Agent Skill
 
-Agent Skill repository for **ImageMCP Server** — empowering AI coding assistants, IDE agents (Cursor, Claude Desktop, Antigravity, Windsurf), and terminal CLIs to generate images, list models, manage API keys, toggle models, update model priorities, and view telemetry logs.
+Agent Skill repository for **ImageMCP Server** — empowering AI coding assistants, IDE agents (Cursor, Claude Desktop, Antigravity, Windsurf), and terminal CLIs to generate images, edit images, list models, manage API keys, toggle models, update model priorities, and view telemetry logs.
 
 ---
 
@@ -69,8 +69,8 @@ Or run interactive setup:
 # Generate image and save to local file
 ./skills/imagemcp/scripts/imagemcp.js generate --prompt "Golden hour landscape" --out output.png
 
-# Image-to-image synthesis
-./skills/imagemcp/scripts/imagemcp.js generate --prompt "Make it anime style" --image ./input.png --out anime.png
+# Edit or refine existing image
+./skills/imagemcp/scripts/imagemcp.js edit --image ./input.png --prompt "Change background to starry night sky" --out edited.png
 
 # List telemetry request logs
 ./skills/imagemcp/scripts/imagemcp.js logs:list
@@ -95,8 +95,9 @@ This skill exclusively implements tools available in the ImageMCP Server backend
 6. `models:toggle` (`toggle_model_status`)
 7. `models:priority` (`update_model_priority`)
 8. `generate` (`generate_playground_image`)
-9. `logs:list` (`get_telemetry_logs`)
-10. `logs:clear` (`clear_telemetry_logs`)
-11. `gallery:list` (`get_gallery_items`)
+9. `edit` (`edit_playground_image`)
+10. `logs:list` (`get_telemetry_logs`)
+11. `logs:clear` (`clear_telemetry_logs`)
+12. `gallery:list` (`get_gallery_items`)
 
 All commands output structured JSON for direct consumption by LLM agents.
