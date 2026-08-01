@@ -1,0 +1,13 @@
+{
+  "name": "agent-skill-imagemcp",
+  "version": "1.0.0",
+  "description": "Agent skill for ImageMCP Server — empowers AI assistants, IDE agents, and terminal CLIs to generate images, list models, manage API keys, configure model priorities, and view telemetry logs.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "imagemcp": "node skills/imagemcp/scripts/imagemcp.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
