@@ -82,7 +82,8 @@ function loadConfig() {
     if (!fs.existsSync(filePath)) return null;
     try {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      const token = data.token ? decryptToken(data.token) : data.apiKey || '';
+      const rawToken = data.token || data.apiKey || '';
+      const token = typeof rawToken === 'string' ? rawToken : decryptToken(rawToken);
       return { apiKey: token, apiUrl: data.apiUrl || DEFAULT_API_URL };
     } catch (_) {
       return null;
