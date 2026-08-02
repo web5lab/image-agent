@@ -326,10 +326,12 @@ async function editImage(rawArgs) {
 
   const payload = {
     prompt,
+    action: flags.action || 'edit',
     model,
     style,
     aspectRatio,
     imageBase64,
+    image: flags.image,
   };
 
   const resData = await apiRequest('/playground/edit', 'POST', payload, true);
@@ -358,6 +360,30 @@ async function editImage(rawArgs) {
   }
 
   output(resData);
+}
+
+async function removeBgImage(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+  if (!flags.image) {
+    error('Input image is required for background removal. Use --image <filepath_or_url>');
+  }
+  flags.action = 'remove_bg';
+  if (!flags.prompt) {
+    flags.prompt = 'Remove background completely, isolating main subject on clean background';
+  }
+  return editImage(rawArgs);
+}
+
+async function upscaleImage(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+  if (!flags.image) {
+    error('Input image is required for 4K upscaling. Use --image <filepath_or_url>');
+  }
+  flags.action = 'upscale';
+  if (!flags.prompt) {
+    flags.prompt = `Upscale image to ${flags.scale || '4x'} resolution with sharp 4K detail`;
+  }
+  return editImage(rawArgs);
 }
 
 
@@ -412,11 +438,23 @@ ${colors.bold}AVAILABLE COMMANDS:${colors.reset}
     Flags:
       --image <path_or_url>  (Required) Target image to edit or modify
       --prompt "<text>"      Edit instructions or description of changes
+      --action <mode>        Edit mode: edit, inpaint, remove_bg, upscale
       --file <path>          Read prompt from local file
       --model <model_id>     Target model ID (default: google/gemini-2.5-flash-image)
-      --aspect-ratio <ratio> Aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 21:9)
-      --style <name>         Visual style preset (photorealistic, anime, vector, 3d)
       --out <filepath>       Save edited image output to local file path
+
+  ${colors.green}remove_bg${colors.reset} (alias: ${colors.green}image:remove-bg${colors.reset})
+    Remove the background from an image.
+    Flags:
+      --image <path_or_url>  (Required) Target image file path or URL
+      --out <filepath>       Save background-removed image output
+
+  ${colors.green}upscale${colors.reset} (alias: ${colors.green}image:upscale${colors.reset})
+    Upscale an image to high-resolution 4K quality.
+    Flags:
+      --image <path_or_url>  (Required) Target image file path or URL
+      --scale <factor>       Scale factor (default: 4x)
+      --out <filepath>       Save upscaled image output
 
   ${colors.green}setup${colors.reset}
     Run interactive configuration setup wizard.
@@ -463,6 +501,17 @@ async function main() {
       case 'edit':
       case 'image:edit':
         await editImage(commandArgs);
+        break;
+
+      case 'remove_bg':
+      case 'remove-bg':
+      case 'image:remove-bg':
+        await removeBgImage(commandArgs);
+        break;
+
+      case 'upscale':
+      case 'image:upscale':
+        await upscaleImage(commandArgs);
         break;
 
       case 'setup':

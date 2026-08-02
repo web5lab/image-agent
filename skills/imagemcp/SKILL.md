@@ -45,8 +45,10 @@ Only tools provided by ImageMCP Server are available. All commands return JSON f
 | "Check user plan / credits / info" | `./scripts/imagemcp.js user:info` |
 | "List available image models" | `./scripts/imagemcp.js models:list` |
 | "Generate image from prompt" | `./scripts/imagemcp.js generate --prompt "..." --model "google/gemini-2.5-flash-image" --aspect-ratio "16:9"` |
-| "Generate image & save to file" | `./scripts/imagemcp.js generate --prompt "..." --out image.png` |
-| "Edit existing image / Image-to-Image" | `./scripts/imagemcp.js edit --image ./input.png --prompt "..." --out edited.png` |
+| "Generate image with input image (Image-to-Image)" | `./scripts/imagemcp.js generate --prompt "..." --image ./input.png --out output.png` |
+| "Edit existing image / Inpaint" | `./scripts/imagemcp.js edit --image ./input.png --prompt "..." --out edited.png` |
+| "Remove background from image" | `./scripts/imagemcp.js remove_bg --image ./input.png --out clean.png` |
+| "Upscale image to 4K" | `./scripts/imagemcp.js upscale --image ./input.png --scale 4x --out 4k.png` |
 
 ---
 
