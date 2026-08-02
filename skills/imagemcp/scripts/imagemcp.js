@@ -213,56 +213,11 @@ async function getUserInfo() {
   }
 }
 
-async function getApiKeys() {
-  const data = await apiRequest('/api-keys', 'GET', null, true);
-  output(data.keys || data);
-}
-
-async function createApiKey(rawArgs) {
-  const { flags } = parseFlags(rawArgs);
-  const name = flags.name || flags.label || 'CLI Agent Key';
-  const data = await apiRequest('/api-keys', 'POST', { name }, true);
-  output(data);
-}
-
-async function revokeApiKey(rawArgs) {
-  const { positional } = parseFlags(rawArgs);
-  const id = positional[0];
-  if (!id) {
-    error('API Key ID is required. Usage: ./scripts/imagemcp.js keys:revoke <key_id>');
-  }
-  const data = await apiRequest(`/api-keys/${id}`, 'DELETE', null, true);
-  output(data);
-}
-
 async function listModels() {
   const data = await apiRequest('/models', 'GET');
   output(data);
 }
 
-async function toggleModel(rawArgs) {
-  const { positional } = parseFlags(rawArgs);
-  const id = positional[0];
-  if (!id) {
-    error('Model ID is required. Usage: ./scripts/imagemcp.js models:toggle <model_id>');
-  }
-  const data = await apiRequest(`/models/${encodeURIComponent(id)}/toggle`, 'PATCH', null, true);
-  output(data);
-}
-
-async function updatePriority(rawArgs) {
-  const { positional } = parseFlags(rawArgs);
-  const id = positional[0];
-  const priorityStr = positional[1];
-
-  if (!id || priorityStr === undefined) {
-    error('Model ID and priority score are required. Usage: ./scripts/imagemcp.js models:priority <model_id> <score>');
-  }
-
-  const priority = Number(priorityStr);
-  const data = await apiRequest(`/models/${encodeURIComponent(id)}/priority`, 'POST', { priority }, true);
-  output(data);
-}
 
 async function generateImage(rawArgs) {
   const { flags } = parseFlags(rawArgs);
@@ -406,21 +361,6 @@ async function editImage(rawArgs) {
 }
 
 
-async function listLogs() {
-  const data = await apiRequest('/logs', 'GET', null, true);
-  output(data.logs || data);
-}
-
-async function clearLogs() {
-  const data = await apiRequest('/logs', 'DELETE', null, true);
-  output(data);
-}
-
-async function listGallery() {
-  const data = await apiRequest('/gallery', 'GET');
-  output(data.items || data);
-}
-
 function showConfig() {
   const config = loadConfig();
   output({
@@ -444,7 +384,7 @@ function setConfigUrl(url) {
 
 function printHelp() {
   console.error(`
-${colors.bold}${colors.cyan}ImageMCP Server CLI${colors.reset} - Generate & manage images via ImageMCP API
+${colors.bold}${colors.cyan}ImageMCP Server CLI${colors.reset} - Generate & edit images via ImageMCP API
 
 ${colors.bold}USAGE:${colors.reset}
   ./scripts/imagemcp.js <command> [arguments] [flags]
@@ -453,23 +393,8 @@ ${colors.bold}AVAILABLE COMMANDS:${colors.reset}
   ${colors.green}user:info${colors.reset} (alias: ${colors.green}me:get${colors.reset})
     Fetch details of authenticated user (plan, credits, account details).
 
-  ${colors.green}keys:list${colors.reset}
-    List all active API keys.
-
-  ${colors.green}keys:create${colors.reset} --name "<label>"
-    Create a new secret API key.
-
-  ${colors.green}keys:revoke <key_id>${colors.reset}
-    Revoke and delete an API key.
-
-  ${colors.green}models:list${colors.reset}
-    List available OpenRouter image generation models (38+ models).
-
-  ${colors.green}models:toggle <model_id>${colors.reset}
-    Enable or disable a model for your account.
-
-  ${colors.green}models:priority <model_id> <score>${colors.reset}
-    Set user priority score for a model.
+  ${colors.green}models:list${colors.reset} (alias: ${colors.green}models:get${colors.reset})
+    List available OpenRouter image generation models.
 
   ${colors.green}generate${colors.reset} (alias: ${colors.green}image:generate${colors.reset})
     Generate an image from prompt using OpenRouter.
@@ -492,15 +417,6 @@ ${colors.bold}AVAILABLE COMMANDS:${colors.reset}
       --aspect-ratio <ratio> Aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 21:9)
       --style <name>         Visual style preset (photorealistic, anime, vector, 3d)
       --out <filepath>       Save edited image output to local file path
-
-  ${colors.green}logs:list${colors.reset}
-    List request telemetry logs & latency history.
-
-  ${colors.green}logs:clear${colors.reset}
-    Clear all telemetry logs.
-
-  ${colors.green}gallery:list${colors.reset}
-    List showcase gallery items.
 
   ${colors.green}setup${colors.reset}
     Run interactive configuration setup wizard.
@@ -534,30 +450,9 @@ async function main() {
         await getUserInfo();
         break;
 
-      case 'keys:list':
-      case 'keys:get':
-        await getApiKeys();
-        break;
-
-      case 'keys:create':
-        await createApiKey(commandArgs);
-        break;
-
-      case 'keys:revoke':
-        await revokeApiKey(commandArgs);
-        break;
-
       case 'models:list':
       case 'models:get':
         await listModels();
-        break;
-
-      case 'models:toggle':
-        await toggleModel(commandArgs);
-        break;
-
-      case 'models:priority':
-        await updatePriority(commandArgs);
         break;
 
       case 'generate':
@@ -568,19 +463,6 @@ async function main() {
       case 'edit':
       case 'image:edit':
         await editImage(commandArgs);
-        break;
-
-      case 'logs:list':
-      case 'logs:get':
-        await listLogs();
-        break;
-
-      case 'logs:clear':
-        await clearLogs();
-        break;
-
-      case 'gallery:list':
-        await listGallery();
         break;
 
       case 'setup':

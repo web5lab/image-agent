@@ -1,14 +1,14 @@
 ---
 name: imagemcp
 description: >
-  Generate and edit images, evaluate image output quality, perform automatic re-generation retries, manage AI models, manage API keys, configure model priorities, and view request telemetry logs via ImageMCP Server. ALWAYS use this skill when asked to generate images, edit existing images, refine visuals, list models, update image model priorities, manage keys, or fetch generation logs using ImageMCP Server in any IDE or terminal.
+  Get user info/credits, list available image models, generate images, and edit images via ImageMCP Server. ALWAYS check user info/credits first, list models if needed, and generate or edit images in any IDE or terminal.
 last-updated: 2026-08-01
 allowed-tools: Bash(./scripts/imagemcp.js:*)
 ---
 
 # ImageMCP Server Skill
 
-Generate and edit images, manage AI image models, configure model priorities, manage API keys, and monitor request telemetry using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
+Fetch user info/credits, list models, generate images, and edit existing images using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
 
 > **Script paths** below are relative to this skill's directory. Resolve them based on where the skill is installed.
 >
@@ -21,12 +21,10 @@ Generate and edit images, manage AI image models, configure model priorities, ma
 **ImageMCP Server** is a unified multi-model AI image generation and editing platform designed specifically for AI agents, developers, and workflows.
 
 ### Core Capabilities
-1. **Multi-Model AI Gateway**: Access 38+ top-tier image models from OpenRouter (including Google Gemini 2.5 Flash Image, Flux 1.1 Pro, Recraft v3, Ideogram v2, SDXL Turbo, and more).
-2. **Text-to-Image Generation (`generate`)**: Synthesize high-resolution visual assets from natural language prompts, with aspect ratio control (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `21:9`) and visual style presets (`photorealistic`, `anime`, `vector`, `3d`).
-3. **Image Editing & Refinement (`edit`)**: Modify, update, or transform existing images by supplying an input image file or URL (`--image`) alongside edit instructions.
-4. **Model Management & Priority Routing (`models:list`, `models:priority`, `models:toggle`)**: Enable/disable specific models and set custom priority scores to control fallback ordering and model preferences.
-5. **API Key Lifecycle (`keys:list`, `keys:create`, `keys:revoke`)**: Generate and manage secret bearer API keys (`sk-img-gen-...`) with permission scopes.
-6. **Telemetry & Credit Tracking (`logs:list`, `logs:clear`, `user:info`)**: Track real-time request latency, cost per request, execution status codes, and subscription credit usage.
+1. **User Profile & Credit Inspection (`user:info`)**: Always check user profile details, plan, and credit balance first before initiating generation or edit tasks.
+2. **Model Listing (`models:list`)**: Access and inspect available OpenRouter image models (including Google Gemini 2.5 Flash Image, Flux 1.1 Pro, Recraft v3, Ideogram v2, SDXL Turbo, and more).
+3. **Text-to-Image Generation (`generate`)**: Synthesize high-resolution visual assets from natural language prompts, with aspect ratio control (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `21:9`) and visual style presets (`photorealistic`, `anime`, `vector`, `3d`).
+4. **Image Editing & Refinement (`edit`)**: Modify, update, or transform existing images by supplying an input image file or URL (`--image`) alongside edit instructions.
 
 ---
 
@@ -45,18 +43,10 @@ Only tools provided by ImageMCP Server are available. All commands return JSON f
 | User Intent | Command |
 |-------------|---------|
 | "Check user plan / credits / info" | `./scripts/imagemcp.js user:info` |
-| "List active API keys" | `./scripts/imagemcp.js keys:list` |
-| "Generate new API key" | `./scripts/imagemcp.js keys:create --name "Key Name"` |
-| "Revoke an API key" | `./scripts/imagemcp.js keys:revoke <key_id>` |
 | "List available image models" | `./scripts/imagemcp.js models:list` |
-| "Toggle model status (enable/disable)" | `./scripts/imagemcp.js models:toggle <model_id>` |
-| "Update model priority score" | `./scripts/imagemcp.js models:priority <model_id> <score>` |
 | "Generate image from prompt" | `./scripts/imagemcp.js generate --prompt "..." --model "google/gemini-2.5-flash-image" --aspect-ratio "16:9"` |
 | "Generate image & save to file" | `./scripts/imagemcp.js generate --prompt "..." --out image.png` |
 | "Edit existing image / Image-to-Image" | `./scripts/imagemcp.js edit --image ./input.png --prompt "..." --out edited.png` |
-| "Show telemetry logs & latency" | `./scripts/imagemcp.js logs:list` |
-| "Clear telemetry logs" | `./scripts/imagemcp.js logs:clear` |
-| "Show gallery showcase" | `./scripts/imagemcp.js gallery:list` |
 
 ---
 
@@ -93,7 +83,7 @@ If the generated image is **unsatisfactory**, **low quality**, or **fails to mat
 
 ## Detailed Command Documentation
 
-### 1. User & API Key Info
+### 1. User Info & Model List
 
 #### `user:info` (alias: `me:get`)
 Retrieve profile details for the authenticated ImageMCP user including subscription plan and credit balance.
@@ -102,55 +92,16 @@ Retrieve profile details for the authenticated ImageMCP user including subscript
 ./scripts/imagemcp.js user:info
 ```
 
-#### `keys:list`
-List all API keys generated for the user.
-
-```bash
-./scripts/imagemcp.js keys:list
-```
-
-#### `keys:create`
-Create a new API key.
-
-```bash
-./scripts/imagemcp.js keys:create --name "Production Key"
-```
-
-#### `keys:revoke <key_id>`
-Revoke and delete an API key.
-
-```bash
-./scripts/imagemcp.js keys:revoke 64b8f...
-```
-
----
-
-### 2. Image Models Management
-
-#### `models:list`
-List all 38+ supported image generation models from OpenRouter with priority scores, providers, cost, and supported aspect ratios.
+#### `models:list` (alias: `models:get`)
+List all supported image generation models from OpenRouter with priority scores, providers, cost, and supported aspect ratios.
 
 ```bash
 ./scripts/imagemcp.js models:list
 ```
 
-#### `models:toggle <model_id>`
-Enable or disable a model for your account.
-
-```bash
-./scripts/imagemcp.js models:toggle "black-forest-labs/flux-1.1-pro"
-```
-
-#### `models:priority <model_id> <score>`
-Set user-defined priority score for model ordering.
-
-```bash
-./scripts/imagemcp.js models:priority "google/gemini-2.5-flash-image" 100
-```
-
 ---
 
-### 3. Image Generation
+### 2. Image Generation
 
 #### `generate` (alias: `image:generate`)
 Generate high quality images from text prompts using OpenRouter models.
@@ -177,7 +128,7 @@ Generate high quality images from text prompts using OpenRouter models.
 
 ---
 
-### 4. Image Editing & Refinement Endpoint
+### 3. Image Editing & Refinement Endpoint
 
 #### `edit` (alias: `image:edit`)
 Edit, modify, or transform an existing generated image or input image by supplying an image path/URL and prompt instructions.
@@ -204,32 +155,7 @@ Edit, modify, or transform an existing generated image or input image by supplyi
 
 ---
 
-### 5. Telemetry Logs & Gallery
-
-#### `logs:list`
-Retrieve telemetry execution logs including prompt, cost, latency, and status.
-
-```bash
-./scripts/imagemcp.js logs:list
-```
-
-#### `logs:clear`
-Clear all telemetry logs.
-
-```bash
-./scripts/imagemcp.js logs:clear
-```
-
-#### `gallery:list`
-Retrieve showcase gallery items.
-
-```bash
-./scripts/imagemcp.js gallery:list
-```
-
----
-
-### 6. Configuration Commands
+### 4. Configuration Commands
 
 | Command | Description |
 |---------|-------------|
