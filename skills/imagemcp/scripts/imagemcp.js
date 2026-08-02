@@ -234,7 +234,7 @@ async function generateImage(rawArgs) {
     error('Prompt is required. Use --prompt "<text>" or --file <path>');
   }
 
-  const model = flags.model || flags['model-id'] || 'google/gemini-2.5-flash-image';
+  const model = flags.model || flags['model-id'] || undefined;
   const style = flags.style || 'photorealistic';
   const aspectRatio = flags['aspect-ratio'] || flags.aspect || flags.ratio || '1:1';
   let imageBase64 = null;
@@ -308,7 +308,7 @@ async function editImage(rawArgs) {
     error('Prompt is required for editing instructions. Use --prompt "<text>" or --file <path>');
   }
 
-  const model = flags.model || flags['model-id'] || 'google/gemini-2.5-flash-image';
+  const model = flags.model || flags['model-id'] || undefined;
   const style = flags.style || 'photorealistic';
   const aspectRatio = flags['aspect-ratio'] || flags.aspect || flags.ratio || '1:1';
   let imageBase64 = null;
