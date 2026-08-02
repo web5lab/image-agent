@@ -10,9 +10,11 @@ allowed-tools: Bash(./scripts/imagemcp.js:*)
 
 Fetch user info/credits, list models, generate images, and edit existing images using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
 
-> **Script paths** below are relative to this skill's directory. Resolve them based on where the skill is installed.
->
-> **Authentication failures**: If the CLI returns **"Missing ImageMCP API key"** or **"API request failed"**, tell the user to set `IMAGEMCP_API_KEY` or run `./scripts/imagemcp.js setup`. See [`references/setup.md`](references/setup.md).
+> **Authentication Flow & Setup**:
+> 1. `npx skills add web5lab/imagemcpserver` (Installs skill without prompting for tokens).
+> 2. On first use, if unauthenticated, the CLI outputs: `"ImageMCPServer isn't connected yet. Run npx imagemcp login to connect your account."`
+> 3. User runs `npx imagemcp login` to authenticate in the browser, select or generate an API key, and save an encrypted token to `~/.imagemcp/config.json`.
+> 4. Skill automatically resolves and uses the stored token.
 
 ---
 

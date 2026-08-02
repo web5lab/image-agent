@@ -11,9 +11,13 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 
+const crypto = require('crypto');
+
 // Config path resolution
-const GLOBAL_CONFIG_DIR = path.join(os.homedir(), '.config', 'imagemcp');
+const GLOBAL_CONFIG_DIR = path.join(os.homedir(), '.imagemcp');
 const GLOBAL_CONFIG_FILE = path.join(GLOBAL_CONFIG_DIR, 'config.json');
+const LEGACY_CONFIG_DIR = path.join(os.homedir(), '.config', 'imagemcp');
+const LEGACY_CONFIG_FILE = path.join(LEGACY_CONFIG_DIR, 'config.json');
 const LOCAL_CONFIG_DIR = '.imagemcp';
 const LOCAL_CONFIG_FILE = path.join(LOCAL_CONFIG_DIR, 'config.json');
 
@@ -41,6 +45,32 @@ function error(message, details = {}) {
   process.exit(1);
 }
 
+// AES-256-GCM Master Key Derivation for token decryption
+function getMasterKey() {
+  const secretInfo = `${os.hostname()}-${os.userInfo().username}-imagemcp-secure-salt-v1`;
+  return crypto.createHash('sha256').update(secretInfo).digest();
+}
+
+function decryptToken(payload) {
+  if (!payload) return '';
+  if (typeof payload === 'string') return payload;
+  if (payload.raw) return payload.raw;
+
+  try {
+    const key = getMasterKey();
+    const iv = Buffer.from(payload.iv, 'hex');
+    const authTag = Buffer.from(payload.authTag, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(payload.encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (_) {
+    return payload.encrypted || '';
+  }
+}
+
 // Read configuration from env or config files
 function loadConfig() {
   let config = {
@@ -48,22 +78,30 @@ function loadConfig() {
     apiUrl: DEFAULT_API_URL,
   };
 
-  if (fs.existsSync(LOCAL_CONFIG_FILE)) {
+  const parseConfigFile = (filePath) => {
+    if (!fs.existsSync(filePath)) return null;
     try {
-      const data = JSON.parse(fs.readFileSync(LOCAL_CONFIG_FILE, 'utf8'));
-      if (data.apiKey) config.apiKey = data.apiKey;
-      if (data.apiUrl) config.apiUrl = data.apiUrl;
-    } catch (_) {}
-  } else if (fs.existsSync(GLOBAL_CONFIG_FILE)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(GLOBAL_CONFIG_FILE, 'utf8'));
-      if (data.apiKey) config.apiKey = data.apiKey;
-      if (data.apiUrl) config.apiUrl = data.apiUrl;
-    } catch (_) {}
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const token = data.token ? decryptToken(data.token) : data.apiKey || '';
+      return { apiKey: token, apiUrl: data.apiUrl || DEFAULT_API_URL };
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const localCfg = parseConfigFile(LOCAL_CONFIG_FILE);
+  const globalCfg = parseConfigFile(GLOBAL_CONFIG_FILE) || parseConfigFile(LEGACY_CONFIG_FILE);
+
+  if (localCfg && localCfg.apiKey) {
+    config.apiKey = localCfg.apiKey;
+    if (localCfg.apiUrl) config.apiUrl = localCfg.apiUrl;
+  } else if (globalCfg && globalCfg.apiKey) {
+    config.apiKey = globalCfg.apiKey;
+    if (globalCfg.apiUrl) config.apiUrl = globalCfg.apiUrl;
   }
 
-  if (process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY) {
-    config.apiKey = process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY;
+  if (process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY || process.env.IMAGEMCP_TOKEN) {
+    config.apiKey = process.env.IMAGEMCP_API_KEY || process.env.IMAGEMCP_KEY || process.env.IMAGEMCP_TOKEN;
   }
   if (process.env.IMAGEMCP_API_URL) {
     config.apiUrl = process.env.IMAGEMCP_API_URL;
@@ -79,12 +117,12 @@ function saveConfig(newConfig, isLocal = false) {
   const configDir = isLocal ? LOCAL_CONFIG_DIR : GLOBAL_CONFIG_DIR;
 
   if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
+    fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
   }
 
   const existing = fs.existsSync(configFile) ? JSON.parse(fs.readFileSync(configFile, 'utf8')) : {};
   const updated = { ...existing, ...newConfig };
-  fs.writeFileSync(configFile, JSON.stringify(updated, null, 2), 'utf8');
+  fs.writeFileSync(configFile, JSON.stringify(updated, null, 2), { encoding: 'utf8', mode: 0o600 });
   return configFile;
 }
 
@@ -93,8 +131,8 @@ async function apiRequest(endpoint, method = 'GET', body = null, requireAuth = f
   const config = loadConfig();
 
   if (requireAuth && !config.apiKey) {
-    error('Missing ImageMCP API key. Set IMAGEMCP_API_KEY or run ./scripts/imagemcp.js setup', {
-      hint: 'Run ./scripts/imagemcp.js setup to configure your API key.',
+    error("ImageMCPServer isn't connected yet. Run npx imagemcp login to connect your account.", {
+      hint: "Run 'npx imagemcp login' in your terminal to authenticate via browser.",
     });
   }
 

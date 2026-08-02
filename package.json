@@ -7,6 +7,9 @@
   "scripts": {
     "imagemcp": "node skills/imagemcp/scripts/imagemcp.js"
   },
+  "bin": {
+    "imagemcp": "./skills/imagemcp/scripts/imagemcp.js"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
