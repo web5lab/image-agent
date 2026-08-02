@@ -406,11 +406,59 @@ async function removeBgImage(rawArgs) {
   if (!flags.image) {
     error('Input image is required for background removal. Use --image <filepath_or_url>');
   }
-  flags.action = 'remove_bg';
-  if (!flags.prompt) {
-    flags.prompt = 'Remove background completely, isolating main subject on clean background';
+
+  const model = flags.model || flags['model-id'] || undefined;
+  const style = flags.style || 'photorealistic';
+  const aspectRatio = flags['aspect-ratio'] || flags.aspect || flags.ratio || '1:1';
+  let imageBase64 = null;
+
+  const imgPath = flags.image;
+  if (fs.existsSync(imgPath)) {
+    const buffer = fs.readFileSync(imgPath);
+    const ext = path.extname(imgPath).replace('.', '').toLowerCase() || 'png';
+    imageBase64 = `data:image/${ext};base64,${buffer.toString('base64')}`;
+  } else if (imgPath.startsWith('http') || imgPath.startsWith('data:')) {
+    imageBase64 = imgPath;
+  } else {
+    error(`Image file not found: ${imgPath}`);
   }
-  return editImage(rawArgs);
+
+  const payload = {
+    prompt: flags.prompt || 'Remove background completely, isolating main subject on clean background',
+    action: 'remove_bg',
+    model,
+    style,
+    aspectRatio,
+    imageBase64,
+    image: flags.image,
+  };
+
+  const resData = await apiRequest('/playground/remove-background', 'POST', payload, true);
+
+  if (flags.out && resData.success && resData.result?.imageUrl) {
+    const outPath = flags.out;
+    try {
+      const imgUrl = resData.result.imageUrl;
+      let buffer = null;
+
+      if (imgUrl.startsWith('data:')) {
+        const base64Data = imgUrl.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const fetchRes = await fetch(imgUrl);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(arrayBuf);
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to download image to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
 }
 
 async function upscaleImage(rawArgs) {
@@ -418,11 +466,60 @@ async function upscaleImage(rawArgs) {
   if (!flags.image) {
     error('Input image is required for 4K upscaling. Use --image <filepath_or_url>');
   }
-  flags.action = 'upscale';
-  if (!flags.prompt) {
-    flags.prompt = `Upscale image to ${flags.scale || '4x'} resolution with sharp 4K detail`;
+
+  const model = flags.model || flags['model-id'] || undefined;
+  const style = flags.style || 'photorealistic';
+  const aspectRatio = flags['aspect-ratio'] || flags.aspect || flags.ratio || '1:1';
+  let imageBase64 = null;
+
+  const imgPath = flags.image;
+  if (fs.existsSync(imgPath)) {
+    const buffer = fs.readFileSync(imgPath);
+    const ext = path.extname(imgPath).replace('.', '').toLowerCase() || 'png';
+    imageBase64 = `data:image/${ext};base64,${buffer.toString('base64')}`;
+  } else if (imgPath.startsWith('http') || imgPath.startsWith('data:')) {
+    imageBase64 = imgPath;
+  } else {
+    error(`Image file not found: ${imgPath}`);
   }
-  return editImage(rawArgs);
+
+  const payload = {
+    prompt: flags.prompt || `Upscale image to ${flags.scale || '4x'} resolution with sharp 4K detail`,
+    action: 'upscale',
+    scale: flags.scale || '4x',
+    model,
+    style,
+    aspectRatio,
+    imageBase64,
+    image: flags.image,
+  };
+
+  const resData = await apiRequest('/playground/upscale', 'POST', payload, true);
+
+  if (flags.out && resData.success && resData.result?.imageUrl) {
+    const outPath = flags.out;
+    try {
+      const imgUrl = resData.result.imageUrl;
+      let buffer = null;
+
+      if (imgUrl.startsWith('data:')) {
+        const base64Data = imgUrl.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const fetchRes = await fetch(imgUrl);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(arrayBuf);
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to download image to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
 }
 
 
