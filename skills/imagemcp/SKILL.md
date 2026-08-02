@@ -1,14 +1,14 @@
 ---
 name: imagemcp
 description: >
-  Get user info/credits, list available image models, generate images, and edit images via ImageMCP Server. ALWAYS check user info/credits first, list models if needed, and generate or edit images in any IDE or terminal.
-last-updated: 2026-08-01
+  Get user info/credits, list available image models, generate images, synthesize SVG vectors, remove backgrounds, upscale images, compress images, edit images, and convert format via ImageMCP Server. ALWAYS check user info/credits first.
+last-updated: 2026-08-02
 allowed-tools: Bash(./scripts/imagemcp.js:*)
 ---
 
 # ImageMCP Server Skill
 
-Fetch user info/credits, list models, generate images, and edit existing images using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
+Fetch user info/credits, list models, generate images, synthesize vector SVGs, remove backgrounds, upscale images, compress image payload sizes, edit images, and convert formats using [ImageMCP Server](https://api.imagemcpserver.com). Run everything through `./scripts/imagemcp.js` (Node.js 18+, zero dependencies). All commands output structured JSON.
 
 > **Authentication Flow & Setup**:
 > 1. `npx skills add web5lab/imagemcpserver` (Installs skill without prompting for tokens).
@@ -20,13 +20,18 @@ Fetch user info/credits, list models, generate images, and edit existing images 
 
 ## Project Context & Architecture
 
-**ImageMCP Server** is a unified multi-model AI image generation and editing platform designed specifically for AI agents, developers, and workflows.
+**ImageMCP Server** is a unified multi-model AI image generation, vector synthesis, processing, and editing platform designed specifically for AI agents, developers, and workflows.
 
 ### Core Capabilities
 1. **User Profile & Credit Inspection (`user:info`)**: Always check user profile details, plan, and credit balance first before initiating generation or edit tasks.
-2. **Model Listing (`models:list`)**: Access and inspect available OpenRouter image models (including Google Gemini 2.5 Flash Image, Flux 1.1 Pro, Recraft v3, Ideogram v2, SDXL Turbo, and more).
-3. **Text-to-Image Generation (`generate`)**: Synthesize high-resolution visual assets from natural language prompts, with aspect ratio control (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `21:9`) and visual style presets (`photorealistic`, `anime`, `vector`, `3d`).
-4. **Image Editing & Refinement (`edit`)**: Modify, update, or transform existing images by supplying an input image file or URL (`--image`) alongside edit instructions.
+2. **Model Listing (`models:list`)**: Access and inspect available OpenRouter and Fal.ai image models (including Google Gemini 2.5 Flash Image, Fal Recraft Vector, Fal Feynobg, Fal Crisp Upscaler, Flux 1.1 Pro, Recraft v3, Ideogram v2, SDXL Turbo, and more).
+3. **Text-to-Image Generation (`generate`)**: Synthesize high-resolution visual assets from natural language prompts with aspect ratio control (`1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `21:9`) and visual style presets.
+4. **Text to Vector SVG (`text_to_svg`)**: Generate clean, resolution-independent SVG vector graphics code using `fal-ai/recraft/v4.1/text-to-vector`.
+5. **Background Removal (`remove_bg`)**: Isolate subjects with transparent alpha PNG cutouts using `fal-ai/feynobg`.
+6. **Image Upscaling (`upscale`)**: Super-resolution 4K detail enhancement using `fal-ai/recraft/upscale/crisp`.
+7. **Image Compression (`compress`)**: Compress image byte payload size with quality control sliders (10%-95%) and format optimization.
+8. **Image Editing & Refinement (`edit`)**: Modify, update, or transform existing images by supplying an input image file or URL (`--image`) alongside edit instructions.
+9. **Format Conversion (`convert`)**: Convert image files across `PNG`, `JPG`, `WEBP`, `SVG`, `GIF`, and `BMP` formats.
 
 ---
 
@@ -47,10 +52,14 @@ Only tools provided by ImageMCP Server are available. All commands return JSON f
 | "Check user plan / credits / info" | `./scripts/imagemcp.js user:info` |
 | "List available image models" | `./scripts/imagemcp.js models:list` |
 | "Generate image from prompt" | `./scripts/imagemcp.js generate --prompt "..." --model "google/gemini-2.5-flash-image" --aspect-ratio "16:9"` |
+| "Generate vector SVG graphic" | `./scripts/imagemcp.js text_to_svg --prompt "Minimalist rocket icon" --out ./icon.svg` |
 | "Generate image with input image (Image-to-Image)" | `./scripts/imagemcp.js generate --prompt "..." --image ./input.png --out output.png` |
 | "Edit existing image / Inpaint" | `./scripts/imagemcp.js edit --image ./input.png --prompt "..." --out edited.png` |
 | "Remove background from image" | `./scripts/imagemcp.js remove_bg --image ./input.png --out clean.png` |
 | "Upscale image to 4K" | `./scripts/imagemcp.js upscale --image ./input.png --scale 4x --out 4k.png` |
+| "Compress image file size" | `./scripts/imagemcp.js compress --image ./input.png --quality 70 --format webp --out compressed.webp` |
+| "Convert image format" | `./scripts/imagemcp.js convert --image ./input.png --format webp --out converted.webp` |
+
 
 ---
 

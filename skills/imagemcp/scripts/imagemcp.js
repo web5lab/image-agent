@@ -522,6 +522,156 @@ async function upscaleImage(rawArgs) {
   output(resData);
 }
 
+async function textToSvg(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+
+  let prompt = flags.prompt || '';
+  if (flags.file) {
+    if (!fs.existsSync(flags.file)) {
+      error(`Prompt file not found: ${flags.file}`);
+    }
+    prompt = fs.readFileSync(flags.file, 'utf8').trim();
+  }
+
+  if (!prompt) {
+    error('Prompt is required. Use --prompt "<text>" or --file <path>');
+  }
+
+  const payload = {
+    prompt,
+    style: flags.style || 'icon',
+    model: flags.model || flags['model-id'] || 'fal-ai/recraft/v4.1/text-to-vector',
+  };
+
+  const resData = await apiRequest('/playground/text-to-svg', 'POST', payload, true);
+
+  if (flags.out && resData.success && (resData.result?.svgCode || resData.result?.imageUrl)) {
+    const outPath = flags.out;
+    try {
+      let content = resData.result.svgCode;
+      if (!content && resData.result.imageUrl) {
+        const fetchRes = await fetch(resData.result.imageUrl);
+        content = await fetchRes.text();
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, content, 'utf8');
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to save SVG to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
+}
+
+async function compressImage(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+  if (!flags.image) {
+    error('Input image is required for compression. Use --image <filepath_or_url>');
+  }
+
+  let imageBase64 = null;
+  const imgPath = flags.image;
+  if (fs.existsSync(imgPath)) {
+    const buffer = fs.readFileSync(imgPath);
+    const ext = path.extname(imgPath).replace('.', '').toLowerCase() || 'png';
+    imageBase64 = `data:image/${ext};base64,${buffer.toString('base64')}`;
+  } else if (imgPath.startsWith('http') || imgPath.startsWith('data:')) {
+    imageBase64 = imgPath;
+  } else {
+    error(`Image file not found: ${imgPath}`);
+  }
+
+  const payload = {
+    image: flags.image,
+    imageBase64,
+    quality: parseInt(flags.quality || '70', 10),
+    targetFormat: flags['target-format'] || flags.format || 'webp',
+  };
+
+  const resData = await apiRequest('/playground/compress', 'POST', payload, true);
+
+  if (flags.out && resData.success && resData.result?.imageUrl) {
+    const outPath = flags.out;
+    try {
+      const imgUrl = resData.result.imageUrl;
+      let buffer = null;
+
+      if (imgUrl.startsWith('data:')) {
+        const base64Data = imgUrl.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const fetchRes = await fetch(imgUrl);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(arrayBuf);
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to download compressed image to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
+}
+
+async function convertFormat(rawArgs) {
+  const { flags } = parseFlags(rawArgs);
+  if (!flags.image) {
+    error('Input image is required for format conversion. Use --image <filepath_or_url>');
+  }
+
+  const targetFormat = flags['target-format'] || flags.format || flags.to || 'png';
+
+  let imageBase64 = null;
+  const imgPath = flags.image;
+  if (fs.existsSync(imgPath)) {
+    const buffer = fs.readFileSync(imgPath);
+    const ext = path.extname(imgPath).replace('.', '').toLowerCase() || 'png';
+    imageBase64 = `data:image/${ext};base64,${buffer.toString('base64')}`;
+  } else if (imgPath.startsWith('http') || imgPath.startsWith('data:')) {
+    imageBase64 = imgPath;
+  } else {
+    error(`Image file not found: ${imgPath}`);
+  }
+
+  const payload = {
+    image: flags.image,
+    imageBase64,
+    targetFormat,
+  };
+
+  const resData = await apiRequest('/playground/convert-format', 'POST', payload, true);
+
+  if (flags.out && resData.success && resData.result?.imageUrl) {
+    const outPath = flags.out;
+    try {
+      const imgUrl = resData.result.imageUrl;
+      let buffer = null;
+
+      if (imgUrl.startsWith('data:')) {
+        const base64Data = imgUrl.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        const fetchRes = await fetch(imgUrl);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        buffer = Buffer.from(arrayBuf);
+      }
+
+      fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      resData.result.savedTo = path.resolve(outPath);
+    } catch (saveErr) {
+      resData.result.saveError = `Failed to download converted image to ${outPath}: ${saveErr.message}`;
+    }
+  }
+
+  output(resData);
+}
+
 
 function showConfig() {
   const config = loadConfig();
@@ -546,65 +696,100 @@ function setConfigUrl(url) {
 
 function printHelp() {
   console.error(`
-${colors.bold}${colors.cyan}ImageMCP Server CLI${colors.reset} - Generate & edit images via ImageMCP API
+${colors.bold}${colors.cyan}===============================================================
+  🎨 ImageMCP Server CLI — Multi-Model AI Image & Vector Suite
+===============================================================${colors.reset}
 
 ${colors.bold}USAGE:${colors.reset}
-  ./scripts/imagemcp.js <command> [arguments] [flags]
+  ./scripts/imagemcp.js <command> [flags]
 
-${colors.bold}AVAILABLE COMMANDS:${colors.reset}
-  ${colors.green}user:info${colors.reset} (alias: ${colors.green}me:get${colors.reset})
-    Fetch details of authenticated user (plan, credits, account details).
+${colors.bold}CATEGORIZED COMMAND REFERENCE:${colors.reset}
 
-  ${colors.green}models:list${colors.reset} (alias: ${colors.green}models:get${colors.reset})
-    List available OpenRouter image generation models.
+  ${colors.bold}${colors.yellow}1. 👤 USER & ACCOUNT:${colors.reset}
+    ${colors.green}user:info${colors.reset} (alias: ${colors.green}me:get${colors.reset})
+      Fetch profile details, plan type, and remaining credit balance.
+      ${colors.dim}Example: ./scripts/imagemcp.js user:info${colors.reset}
 
-  ${colors.green}generate${colors.reset} (alias: ${colors.green}image:generate${colors.reset})
-    Generate an image from prompt using OpenRouter.
-    Flags:
-      --prompt "<text>"      Text prompt for image synthesis
-      --file <path>          Read prompt from local file
-      --model <model_id>     Target model ID (default: google/gemini-2.5-flash-image)
-      --aspect-ratio <ratio> Aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 21:9)
-      --style <name>         Visual style preset (photorealistic, anime, vector, 3d)
-      --image <path_or_url>  Input image for image-to-image synthesis
-      --out <filepath>       Save generated image to local file path
+    ${colors.green}models:list${colors.reset} (alias: ${colors.green}models:get${colors.reset})
+      List all supported OpenRouter & Fal.ai image models.
+      ${colors.dim}Example: ./scripts/imagemcp.js models:list${colors.reset}
 
-  ${colors.green}edit${colors.reset} (alias: ${colors.green}image:edit${colors.reset})
-    Edit, refine, or transform an existing image.
-    Flags:
-      --image <path_or_url>  (Required) Target image to edit or modify
-      --prompt "<text>"      Edit instructions or description of changes
-      --action <mode>        Edit mode: edit, inpaint, remove_bg, upscale
-      --file <path>          Read prompt from local file
-      --model <model_id>     Target model ID (default: google/gemini-2.5-flash-image)
-      --out <filepath>       Save edited image output to local file path
+  ${colors.bold}${colors.yellow}2. 📐 VECTOR GRAPHICS:${colors.reset}
+    ${colors.green}text_to_svg${colors.reset} (aliases: ${colors.green}svg${colors.reset}, ${colors.green}text-to-svg${colors.reset})
+      Synthesize clean vector SVG graphics using ${colors.cyan}fal-ai/recraft/v4.1/text-to-vector${colors.reset}.
+      Flags:
+        --prompt "<text>"      Text description of icon/logo/vector (Required)
+        --style <style>        Style preset: icon, logo, mascot, illustration, pattern
+        --out <filepath>       Save generated SVG file output (.svg)
+      ${colors.dim}Example: ./scripts/imagemcp.js text_to_svg --prompt "Minimalist rocket icon" --out ./rocket.svg${colors.reset}
 
-  ${colors.green}remove_bg${colors.reset} (alias: ${colors.green}image:remove-bg${colors.reset})
-    Remove the background from an image.
-    Flags:
-      --image <path_or_url>  (Required) Target image file path or URL
-      --out <filepath>       Save background-removed image output
+  ${colors.bold}${colors.yellow}3. ✨ IMAGE GENERATION:${colors.reset}
+    ${colors.green}generate${colors.reset} (alias: ${colors.green}image:generate${colors.reset})
+      Synthesize images from text prompts or input images.
+      Flags:
+        --prompt "<text>"      Detailed prompt description (Required)
+        --file <path>          Read prompt text from file
+        --model <model_id>     Target model ID (default: google/gemini-2.5-flash-image)
+        --aspect-ratio <ratio> Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9
+        --style <name>         Visual style preset (photorealistic, anime, vector, 3d)
+        --image <path_or_url>  Base image for image-to-image synthesis
+        --out <filepath>       Save generated image output file
+      ${colors.dim}Example: ./scripts/imagemcp.js generate --prompt "Cyberpunk city" --aspect-ratio 16:9 --out ./city.png${colors.reset}
 
-  ${colors.green}upscale${colors.reset} (alias: ${colors.green}image:upscale${colors.reset})
-    Upscale an image to high-resolution 4K quality.
-    Flags:
-      --image <path_or_url>  (Required) Target image file path or URL
-      --scale <factor>       Scale factor (default: 4x)
-      --out <filepath>       Save upscaled image output
+  ${colors.bold}${colors.yellow}4. ✂️ PROCESSING & EDITING:${colors.reset}
+    ${colors.green}remove_bg${colors.reset} (alias: ${colors.green}remove-bg${colors.reset})
+      Remove image backgrounds completely with transparent PNG cutouts using ${colors.cyan}fal-ai/feynobg${colors.reset}.
+      Flags:
+        --image <path_or_url>  Target image path or URL (Required)
+        --out <filepath>       Save background-removed transparent PNG
+      ${colors.dim}Example: ./scripts/imagemcp.js remove_bg --image ./product.jpg --out ./product_clean.png${colors.reset}
 
-  ${colors.green}setup${colors.reset}
-    Run interactive configuration setup wizard.
+    ${colors.green}upscale${colors.reset} (alias: ${colors.green}image:upscale${colors.reset})
+      Upscale image resolution to 4K quality using ${colors.cyan}fal-ai/recraft/upscale/crisp${colors.reset}.
+      Flags:
+        --image <path_or_url>  Target image path or URL (Required)
+        --scale <factor>       Scale factor: 2x, 4x, 8x (default: 4x)
+        --out <filepath>       Save upscaled image output file
+      ${colors.dim}Example: ./scripts/imagemcp.js upscale --image ./photo.jpg --scale 4x --out ./photo_4k.png${colors.reset}
 
-  ${colors.green}config:show${colors.reset}
-    Display current configuration settings.
+    ${colors.green}edit${colors.reset} (alias: ${colors.green}image:edit${colors.reset})
+      Edit, inpaint, or modify images with prompt instructions.
+      Flags:
+        --image <path_or_url>  Base image to modify (Required)
+        --prompt "<text>"      Edit instructions (Required)
+        --out <filepath>       Save edited image output file
+      ${colors.dim}Example: ./scripts/imagemcp.js edit --image ./room.jpg --prompt "Add sleeping cat on rug" --out ./edited.png${colors.reset}
 
-  ${colors.green}config:set-key <key>${colors.reset}
-    Set API key in configuration file.
+  ${colors.bold}${colors.yellow}5. 🗜️ OPTIMIZATION & CONVERSION:${colors.reset}
+    ${colors.green}compress${colors.reset} (alias: ${colors.green}compress_image${colors.reset})
+      Compress image file size with quality percentage control.
+      Flags:
+        --image <path_or_url>  Target image path or URL (Required)
+        --quality <10-95>      Quality percentage (default: 70)
+        --format <fmt>         Output format: webp, jpeg, png (default: webp)
+        --out <filepath>       Save compressed output file
+      ${colors.dim}Example: ./scripts/imagemcp.js compress --image ./large.png --quality 65 --out ./compressed.webp${colors.reset}
 
-  ${colors.green}config:set-url <url>${colors.reset}
-    Set API URL in configuration file.
+    ${colors.green}convert${colors.reset} (alias: ${colors.green}convert_format${colors.reset})
+      Convert image format across PNG, JPG, WEBP, SVG, GIF, and BMP.
+      Flags:
+        --image <path_or_url>  Target image path or URL (Required)
+        --format <fmt>         Target format: png, jpeg, webp, svg, gif, bmp (Required)
+        --out <filepath>       Save converted image file
+      ${colors.dim}Example: ./scripts/imagemcp.js convert --image ./photo.jpg --format webp --out ./photo.webp${colors.reset}
+
+  ${colors.bold}${colors.yellow}6. ⚙️ CONFIGURATION:${colors.reset}
+    ${colors.green}setup${colors.reset}                    Interactive configuration wizard
+    ${colors.green}config:show${colors.reset}              Display current settings
+    ${colors.green}config:set-key <key>${colors.reset}     Save API Key
+    ${colors.green}config:set-url <url>${colors.reset}     Save Backend Server API URL
+
+${colors.bold}QUICK HELP & TIPS:${colors.reset}
+  Pass ${colors.cyan}--out <path>${colors.reset} to any image command to automatically download and save the output.
+  For full documentation, visit ${colors.cyan}https://imagemcpserver.com${colors.reset}.
 `);
 }
+
 
 // Main CLI entry point
 async function main() {
@@ -634,6 +819,12 @@ async function main() {
         await generateImage(commandArgs);
         break;
 
+      case 'text_to_svg':
+      case 'text-to-svg':
+      case 'svg':
+        await textToSvg(commandArgs);
+        break;
+
       case 'edit':
       case 'image:edit':
         await editImage(commandArgs);
@@ -648,6 +839,18 @@ async function main() {
       case 'upscale':
       case 'image:upscale':
         await upscaleImage(commandArgs);
+        break;
+
+      case 'compress':
+      case 'compress_image':
+      case 'compress-image':
+        await compressImage(commandArgs);
+        break;
+
+      case 'convert':
+      case 'convert_format':
+      case 'convert-format':
+        await convertFormat(commandArgs);
         break;
 
       case 'setup':
@@ -673,5 +876,6 @@ async function main() {
     error(err.message || 'An unexpected error occurred');
   }
 }
+
 
 main();
