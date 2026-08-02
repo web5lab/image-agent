@@ -424,7 +424,7 @@ async function removeBgImage(rawArgs) {
   }
 
   const payload = {
-    prompt: flags.prompt || 'Remove background completely, isolating main subject on clean background',
+    prompt: flags.prompt,
     action: 'remove_bg',
     model,
     style,
